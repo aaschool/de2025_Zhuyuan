@@ -1,0 +1,106 @@
+#include <SPI.h>
+#include <MFRC522.h>
+#include <ESP8266WiFi.h>
+#include <ESP8266HTTPClient.h>
+#include <ArduinoJson.h>
+
+// WiFi configuration
+const char* ssid = "YourWiFiName";
+const char* password = "YourWiFiPassword";
+const char* serverUrl = "http://YourServerAddress/receive_data"; // Unity or Google App Script endpoint
+
+// RFID configuration
+#define SS_PIN D2  // RC522 pin connected to NodeMCU
+#define RST_PIN D1
+MFRC522 mfrc522(SS_PIN, RST_PIN);
+
+// Variables to store card scanning status
+String lastTag = "";  // Store the UID of the last scanned card
+int readCount = 0;    // Count the number of scans
+unsigned long lastReadTime = 0; // Store the last scan time
+const int readInterval = 3000;  // Limit the scan interval (3 seconds)
+
+WiFiClient client;
+
+void setup() {
+    Serial.begin(115200);
+    SPI.begin();
+    mfrc522.PCD_Init();
+    WiFi.begin(ssid, password);
+    
+    Serial.println("Connecting to WiFi...");
+    while (WiFi.status() != WL_CONNECTED) {
+        delay(500);
+        Serial.print(".");
+    }
+    Serial.println("\nWiFi connected!");
+}
+
+void loop() {
+    // Check if there is a new RFID card
+    if (!mfrc522.PICC_IsNewCardPresent() || !mfrc522.PICC_ReadCardSerial()) {
+        return;
+    }
+
+    // Read UID
+    String uid = "";
+    for (byte i = 0; i < mfrc522.uid.size; i++) {
+        uid += String(mfrc522.uid.uidByte[i], HEX);
+    }
+    uid.toUpperCase();
+    
+    // Prevent scanning the same card repeatedly in a short period
+    unsigned long currentTime = millis();
+    if (uid == lastTag && (currentTime - lastReadTime < readInterval)) {
+        Serial.println("Please do not scan the same card in a short time!");
+        return;
+    }
+
+    // Update records
+    lastTag = uid;
+    lastReadTime = currentTime;
+    readCount++;
+
+    // ** Reset after 3 scans **
+    if (readCount > 3) {
+        Serial.println("Scan count reached the limit, resetting counter...");
+        readCount = 1; 
+    }
+
+    // Print scanning information
+    Serial.print("Tag: ");
+    Serial.print(uid);
+    Serial.print(" | Scan number: ");
+    Serial.println(readCount);
+
+    // Send data to the server
+    sendDataToServer(uid, readCount);
+}
+
+void sendDataToServer(String uid, int count) {
+    if (WiFi.status() == WL_CONNECTED) {
+        HTTPClient http;
+        http.begin(serverUrl);
+        http.addHeader("Content-Type", "application/json");
+
+        // Construct JSON data
+        StaticJsonDocument<200> doc;
+        doc["uid"] = uid;
+        doc["count"] = count;
+        String jsonStr;
+        serializeJson(doc, jsonStr);
+
+        // Send POST request
+        int httpResponseCode = http.POST(jsonStr);
+        if (httpResponseCode > 0) {
+            Serial.println("Data sent: " + jsonStr);
+        } else {
+            Serial.print("Send failed, error code: ");
+            Serial.println(httpResponseCode);
+        }
+
+        http.end();
+    } else {
+        Serial.println("WiFi not connected, unable to send data!");
+    }
+}
