@@ -1,0 +1,46 @@
+let modelMap = {
+  "13:98:cb:41": "model1.glb",
+  "tag2": "model2.glb",
+  "tag3": "model3.glb"
+};
+
+function setup() {
+  createCanvas(400, 200);
+  background(200);
+  textSize(16);
+  textAlign(CENTER, CENTER);
+  text("Tap NFC tag to load AR model", width / 2, height / 2);
+
+  let scanButton = createButton('Scan NFC');
+  scanButton.position(150, 150);
+  scanButton.mousePressed(readNFC);
+
+  let scene = createDiv('');
+  scene.id('scene');
+  scene.html('<a-scene embedded><a-camera position="0 1.6 0"></a-camera><a-entity id="arModel" position="0 0 -2"></a-entity></a-scene>', true);
+}
+
+async function readNFC() {
+  if ('NDEFReader' in window) {
+    try {
+      const ndef = new NDEFReader();
+      await ndef.scan();
+      ndef.onreading = event => {
+        const tagId = event.serialNumber;
+        console.log('NFC Tag ID:', tagId);
+        loadARModel(modelMap[tagId] || 'default.glb');
+      };
+    } catch (error) {
+      console.error('NFC Error:', error);
+    }
+  } else {
+    alert('Web NFC not supported on this device.');
+  }
+}
+
+function loadARModel(modelPath) {
+  let modelEntity = select('#arModel');
+  if (modelEntity) {
+    modelEntity.attribute('gltf-model', modelPath);
+  }
+}
