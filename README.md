@@ -120,7 +120,7 @@ $ python -m http.server XXXX
 
 ## Reference
 
-https://developer.mozilla.org/zh-CN/docs/Web/API/Web_NFC_API?utm_source=chatgpt.com
+https://developer.mozilla.org/zh-CN/docs/Web/API/Web_NFC_API
 https://w3c.github.io/web-nfc/
 https://aframe.io/blog/
 https://developer.chrome.com/docs/capabilities/nfc?hl=zh-cn&utm_source
