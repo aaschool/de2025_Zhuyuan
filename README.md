@@ -153,7 +153,7 @@ code frontend (Final)(Updated 250318)
 
 ```
 
-code frontend (In progress)
+code frontend (Old)
 
 let modelMap = {
   "13:98:cb:41": "model1.glb",
