@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Modular Tarot AR</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.min.js"></script>
+  <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+  <script>
+    // NFC tag to model mapping
+    const modelMap = {
+      "13:98:cb:41": { A: "models/frame1.glb", B: "models/content1.glb", C: "models/decor1.glb" },
+      "e3:26:e1:42": { A: "models/frame2.glb", B: "models/content2.glb", C: "models/decor2.glb" },
+      "13:b6:13:43": { A: "models/frame3.glb", B: "models/content3.glb", C: "models/decor3.glb" },
+      "13:3b:df:41": { A: "models/frame4.glb", B: "models/content4.glb", C: "models/decor4.glb" },
+      "b3:8c:40:42": { A: "models/frame5.glb", B: "models/content5.glb", C: "models/decor5.glb" },
+      "83:dd:72:43": { A: "models/frame6.glb", B: "models/content6.glb", C: "models/decor6.glb" }
+    };
+
+    let scanCount = 0; // Total scan count (accumulative across tags)
+    const moduleTypes = ["A", "B", "C"];
+
+    const loadPositions = {
+      A: "0 1 0",
+      B: "0 1.1 0",
+      C: "0 1.2 0"
+    };
+
+    async function readNFC() {
+      if ("NDEFReader" in window) {
+        try {
+          const ndef = new NDEFReader();
+          await ndef.scan();
+          ndef.onreading = event => {
+            const tagId = event.serialNumber;
+            console.log("NFC Tag ID:", tagId);
+
+            if (!modelMap[tagId]) {
+              console.log("Unrecognized NFC tag!");
+              return;
+            }
+
+            // Reset scene and scan count every 4 scans
+            if (scanCount >= 3) {
+              resetScene();
+              scanCount = 0;
+            }
+
+            // Load the next model (A -> B -> C)
+            loadNextModule(tagId);
+            scanCount++;
+          };
+        } catch (error) {
+          console.error("NFC scanning error:", error);
+        }
+      } else {
+        alert("Web NFC is not supported on this device!");
+      }
+    }
+
+    function loadNextModule(tagId) {
+      const modelData = modelMap[tagId];
+      const moduleType = moduleTypes[scanCount];
+
+      if (modelData[moduleType]) {
+        loadModule(moduleType, modelData[moduleType]);
+      }
+    }
+
+    function loadModule(moduleType, modelPath) {
+      let container = document.querySelector("#tarotContainer");
+
+      // Check if the model type already exists to avoid duplicates
+      let existingModule = document.getElementById(moduleType);
+
+      if (existingModule) {
+        existingModule.setAttribute("gltf-model", modelPath); // Replace existing model
+      } else {
+        let moduleEntity = document.createElement("a-entity");
+        moduleEntity.setAttribute("id", moduleType);
+        moduleEntity.setAttribute("gltf-model", modelPath);
+        moduleEntity.setAttribute("position", loadPositions[moduleType]);
+        moduleEntity.setAttribute("scale", "0.5 0.5 0.5");
+        container.appendChild(moduleEntity);
+      }
+
+      console.log(`${moduleType} model loaded: ${modelPath}`);
+    }
+
+    function resetScene() {
+      const container = document.querySelector("#tarotContainer");
+      container.innerHTML = ""; // Clear the scene
+      console.log("Scene reset");
+    }
+  </script>
+</head>
+<body>
+  <button onclick="readNFC()">Scan NFC</button>
+  <a-scene embedded>
+    <a-camera position="0 1.6 0"></a-camera>
+    <a-entity id="tarotContainer" position="0 0 -3"></a-entity>
+  </a-scene>
+</body>
+</html>
