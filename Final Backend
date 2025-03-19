@@ -1,0 +1,8 @@
+
+code Backend (Termux Simulated Python HTTP Server)
+
+$ pkg update
+$ pkg install python
+$ termux-setup-storage
+$ cd /storage/emulated/0/XXXXX
+$ python -m http.server XXXX
